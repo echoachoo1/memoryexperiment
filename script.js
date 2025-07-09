@@ -126,7 +126,7 @@ function playShapeSequence(sequence, onComplete) {
 let shapesDropped = 0;
 let currentTrialSequence = [];
 
-//PRACTICE TRIAL
+//PRACTICE TRIAL 
 function startTrial() {
   console.log("▶️ Starting practice trial");
 
@@ -213,6 +213,7 @@ function startRealTrial() {
 }
 
 //POINT calculation
+//placement right but not points
 function evaluateUserInput(expected) {
   const fullCreditSequence = [15, 30, 60, 120];
   let totalCurrTrial = 0;
