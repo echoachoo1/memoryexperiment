@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content ="width=device-width, initial-scale=1.0">
+    <title>Memory Game</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="score-display">Score: 0</div>
+    <div id="container">
+        <div id="start-screen">
+        <h1>Welcome!</h1>
+        <label for="participant-id">Participant ID:</label>
+        <input type="text" id="participant-id">
+        <button id="enter-btn">Enter</button><br> 
+        <button id="settings-btn">Settings</button><br>     
+        <div id="settings-panel" style="display: none; margin-top: 10px;">
+            <label for="custom-images">Upload 16 custom images (optional):</label>
+            <input type="file" id="custom-images" webkitdirectory directory multiple accept="image/*">
+        </div>
+    </div>
+
+        <div id="overlay-message" style="display: none;">
+            <div id="message-box">Press SPACE to start the practice trial</div>
+        </div>          
+        <div id="all-grids" style="display: none;">
+            <div id="top-bar" class="sidebars topbottom-bars">
+                <div class="tile"><img src="shapes/circle-red.png" draggable="true"></div>
+                <div class="tile"><img src="shapes/square-red.png" draggable="true"></div>
+                <div class="tile"><img src="shapes/triangle-red.png" draggable="true"></div>
+                <div class="tile"><img src="shapes/diamond-red.png" draggable="true"></div>
+            </div>
+
+            <div id="middle-row">
+                <div id="left-bar" class="sidebars leftright-bars">
+                    <div class="tile"><img src="shapes/circle-blue.png" draggable="true"></div>
+                    <div class="tile"><img src="shapes/square-blue.png" draggable="true"></div>
+                    <div class="tile"><img src="shapes/triangle-blue.png" draggable="true"></div>
+                    <div class="tile"><img src="shapes/diamond-blue.png" draggable="true"></div>
+                </div>
+
+              <div id="center-grid">
+                <div id="grid"></div>
+              </div>
+
+              <div id="right-bar" class="sidebars leftright-bars">
+                <div class="tile"><img src="shapes/circle-green.png" draggable="true"></div>
+                <div class="tile"><img src="shapes/square-green.png" draggable="true"></div>
+                <div class="tile"><img src="shapes/triangle-green.png" draggable="true"></div>
+                <div class="tile"><img src="shapes/diamond-green.png" draggable="true"></div>
+              </div>
+            </div>
+
+            <div id="bottom-bar" class="sidebars topbottom-bars">
+                <div class="tile"><img src="shapes/circle-yellow.png" draggable="true"></div>
+                <div class="tile"><img src="shapes/square-yellow.png" draggable="true"></div>
+                <div class="tile"><img src="shapes/triangle-yellow.png" draggable="true"></div>
+                <div class="tile"><img src="shapes/diamond-yellow.png" draggable="true"></div>
+            </div>
+          </div>          
+          
+        <p id="message"></p>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
