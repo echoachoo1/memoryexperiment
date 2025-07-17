@@ -126,15 +126,10 @@ function playShapeSequence(sequence, onComplete) {
 let shapesDropped = 0;
 let currentTrialSequence = [];
 
-//PRACTICE TRIAL 
+//PRACTICE TRIAL
 function startTrial() {
-  console.log("▶️ Starting practice trial");
-
   const practiceLengths = [2, 2];
   let curr = 0;
-  fullCreditIndex = 0;
-  userDropLocations = [];
-  shapesDropped = 0;
   acceptingInput = true;
 
   function runNext() {
@@ -149,9 +144,9 @@ function startTrial() {
     const shapeCount = practiceLengths[curr];
     currentTrialSequence = generateShapeSequence(shapeCount);  
     playShapeSequence(currentTrialSequence,() => {
+      userDropLocations = [];
       tileElements.forEach(tile => tile.innerHTML = '');
       fullCreditIndex = 0;
-      userDropLocations = [];
       acceptingInput = true;
       userInput = [];
       shapesDropped = 0;
@@ -191,11 +186,11 @@ function startRealTrial() {
     currentTrialSequence = generateShapeSequence(shapeCount);
 
     playShapeSequence(currentTrialSequence, () => {
+      userDropLocations = []; 
       tileElements.forEach(tile => tile.innerHTML = '');
       fullCreditIndex = 0;
       acceptingInput = true;
       userInput = [];
-      userDropLocations = []; //reset for new trial
       shapesDropped = 0;
       enableDragAndDrop();
 
@@ -213,26 +208,35 @@ function startRealTrial() {
 }
 
 //POINT calculation
-//placement right but not points
 function evaluateUserInput(expected) {
+  console.log("Evaluating", userDropLocations.length, "drops");
+
   const fullCreditSequence = [15, 30, 60, 120];
   let totalCurrTrial = 0;
   let tileScores = [];
   let hadMistake = false;
 
-  // Evaluate every drop the user made
+  // Map expected gridIndex → { shapeId, order }
+  const expectedMap = new Map();
+  expected.forEach((item, i) => {
+    expectedMap.set(item.gridIndex, {
+      shapeId: item.shapeId,
+      order: i
+    });
+  });
+
+  // Score based on user drop locations
   userDropLocations.forEach((drop) => {
-    // Try to find the expected item for this drop
-    const exp = expected.find((item) => item.gridIndex === drop.tileIndex);
+    const tileIndex = drop.tileIndex;
+    const expected = expectedMap.get(tileIndex);
     let points = 0;
 
-    if (!exp) {
-      // No expected item for this location
+    if (!expected) {
       points = 0;
       hadMistake = true;
     } else {
-      const [dDropped, cDropped] = drop.imgSrc.split("/").pop().replace(".png", "").split("-");
-      const [dExpected, cExpected] = getShapeImageById(exp.shapeId).split("/").pop().replace(".png", "").split("-");
+      const [dDropped, cDropped] = drop.imgSrc.split('/').pop().replace('.png', '').split('-');
+      const [dExpected, cExpected] = getShapeImageById(expected.shapeId).split('/').pop().replace('.png', '').split('-');
 
       const shapeCorrect = dDropped === dExpected;
       const colorCorrect = cDropped === cExpected;
@@ -244,25 +248,20 @@ function evaluateUserInput(expected) {
         points = 10;
         hadMistake = true;
       } else {
-        // All right
         if (hadMistake) {
           points = 15;
         } else {
-          // IMPORTANT: Use exp.order, NOT drop order
-          points = fullCreditSequence[exp.order] ?? 15;
+          points = fullCreditSequence[expected.order] ?? 15;
         }
       }
     }
 
-    totalCurrTrial += points;
-
-    // Push the result with the drop location
-    tileScores.push({ index: drop.tileIndex, points });
+    //totalCurrTrial += points;
+    tileScores.push({ index: tileIndex, points });
   });
 
   return tileScores;
 }
-
 
 function showFeedbackInTiles(scoreData) {
   // 1) Show the per-tile feedback
@@ -277,6 +276,10 @@ function showFeedbackInTiles(scoreData) {
 
   // 2) Compute exactly what you just showed and add it
   const delta = scoreData.reduce((sum, s) => sum + s.points, 0);
+  //debugging
+  const label = realTrial ? "🛠 Real trial" : "✅ Practice";
+  console.log(`${label} – adding ${delta} to score (before: ${score})`);
+
   score += delta;
   document.getElementById('score-display').textContent = `Score: ${score}`;
 
@@ -287,14 +290,14 @@ function showFeedbackInTiles(scoreData) {
 }
 
 function enableDragAndDrop() {
-    document.querySelectorAll('.sidebars .tile img').forEach(img => {
-      img.addEventListener('dragstart', e => {
-        e.dataTransfer.effectAllowed = 'move';
-        e.dataTransfer.setData('text/plain', e.target.src);
-        const w = e.target.width, h = e.target.height;
-        e.dataTransfer.setDragImage(e.target, w / 2, h / 2);
-      });
+  document.querySelectorAll('.sidebars .tile img').forEach(img => {
+    img.addEventListener('dragstart', e => {
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', e.target.src);
+      const w = e.target.width, h = e.target.height;
+      e.dataTransfer.setDragImage(e.target, w / 2, h / 2);
     });
+  });
   
     //make grid cells droppable
     const gridTiles = document.querySelectorAll('#grid .tile');
@@ -305,36 +308,51 @@ function enableDragAndDrop() {
       });
   
       tile.addEventListener('drop', e => {
-        e.preventDefault();
-        const src = e.dataTransfer.getData('text/plain');
-        if(src) {
-            if(!tile.firstChild) shapesDropped++; // only count if it's a new drop
-            userDropLocations.push({
-            tileIndex: parseInt(tile.dataset.index),
-            imgSrc: src
-            });
+        tileElements.forEach(tile => {
+  tile.replaceWith(tile.cloneNode(true));  // wipe old listeners
+});
+tileElements.length = 0;
+document.querySelectorAll('#grid .tile').forEach(tile => {
+  tileElements.push(tile); // repopulate list
 
-            tile.innerHTML = '';
-            const img = document.createElement('img');
-            img.src = src;
-            img.draggable = false;
-            img.style.width = '100%';
-            img.style.height = '100%';
-            img.style.objectFit = 'contain';
-            tile.appendChild(img);
-        }
-        //check if user dropped enough shapes
-        if(shapesDropped >= currentTrialSequence.length && acceptingInput) {
-          acceptingInput = false;
+  tile.addEventListener('dragover', e => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  });
 
-          // Wait one animation frame to ensure last shape renders before clearing
-          requestAnimationFrame(() => {
-            setTimeout(() => {
-              const scoreData = evaluateUserInput(currentTrialSequence);
-              showFeedbackInTiles(scoreData);
-            }, 0); // or 20ms if needed
-          });
-        }
+  tile.addEventListener('drop', e => {
+    e.preventDefault();
+    const src = e.dataTransfer.getData('text/plain');
+    if (src) {
+      if (!tile.firstChild) shapesDropped++;
+      userDropLocations.push({
+        tileIndex: parseInt(tile.dataset.index),
+        imgSrc: src
+      });
+
+      tile.innerHTML = '';
+      const img = document.createElement('img');
+      img.src = src;
+      img.draggable = false;
+      img.style.width = '100%';
+      img.style.height = '100%';
+      img.style.objectFit = 'contain';
+      tile.appendChild(img);
+    }
+
+    if (shapesDropped >= currentTrialSequence.length && acceptingInput) {
+      acceptingInput = false;
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          console.log("Evaluating", userDropLocations.length, "drops");
+          const scoreData = evaluateUserInput(currentTrialSequence);
+          showFeedbackInTiles(scoreData);
+        }, 0);
+      });
+    }
+  });
+});
+
       });
     });
   }
