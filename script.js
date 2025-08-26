@@ -10,33 +10,74 @@ let participantID = null;
 let realTrial = false;
 let userDropLocations = [];
 let score = 0;
+let trialSummaryData = [
+  ['participantID', 'trialNumber', 'sequenceLength', 'trialDuration(ms)', 'scoreThisTrial']
+];
+let dragPathData = [["Trial", "DragNumber", "X", "Y", "Timestamp"]];
+let trialStartTime = null;
+let trialEndTime = null;
+let practiceTrialCounter = 0;
+let realTrialCounter = 0;
+
+//hard coded shape duration
+const realTrialDurations = [
+  800, //trial 0
+  700, //trial 1 
+  600, //trial 2
+  800, //trial 3
+  700, //trial 4
+  600, //trial 5
+  1000, //trial 6
+  900, //trial 7
+  800, //trial 8
+  800,
+  700,
+  600,
+  800,
+  700,
+  600,
+  1000,
+  900,
+  800,
+  800,
+  700,
+  600,
+  800,
+  700,
+  600,
+  800,
+  700 //trial 25
+];
+
+const pracTrialDuration = [
+  800,
+  700
+];
 
 //making the 4x4 grid
 tileElements.length = 0;
-for(let i = 0; i < gridSize * gridSize; i++) {
-    const tile = document.createElement('div');
-    tile.classList.add('tile');
-    tile.dataset.index = i;
-    tile.addEventListener('click', handleTileClick);
-    grid.appendChild(tile);
-    tileElements.push(tile);
+for (let i = 0; i < gridSize * gridSize; i++) {
+  const tile = document.createElement('div');
+  tile.classList.add('tile');
+  tile.dataset.index = i;
+  tile.addEventListener('click', handleTileClick);
+  grid.appendChild(tile);
+  tileElements.push(tile);
 }
 
-document.getElementById('enter-btn').addEventListener('click',() => {
-    const input = document.getElementById('participant-id').value.trim();
-    if(!input) {
-        alert("Please enter your ID before starting.");
-        return;
-    }
+document.getElementById('enter-btn').addEventListener('click', () => {
+  const input = document.getElementById('participant-id').value.trim();
+  if (!input) {
+    alert("Please enter your ID before starting.");
+    return;
+  }
+  participantID = input;
+  document.getElementById('start-screen').style.display = 'none';
+  document.getElementById('all-grids').style.display = 'grid';  // or 'flex' depending on your layout
 
-    participantID = input;
-
-    document.getElementById('start-screen').style.display = 'none';
-    document.getElementById('all-grids').style.display = 'grid';  // or 'flex' depending on your layout
-
-    document.getElementById('overlay-message').style.display = 'flex';
-    //add participant ID to jsPsych 
-    console.log("Participant ID:", participantID);
+  document.getElementById('overlay-message').style.display = 'flex';
+  //add participant ID to jsPsych 
+  console.log("Participant ID:", participantID);
 });
 
 document.getElementById('settings-btn').addEventListener('click', () => {
@@ -48,23 +89,23 @@ document.getElementById('settings-btn').addEventListener('click', () => {
 document.addEventListener('keydown', e => {
   const overlay = document.getElementById('overlay-message');
   const msg = document.getElementById('message-box').textContent;
-  if(overlay.style.display !== 'flex') return;
+  if (overlay.style.display !== 'flex') return;
 
-  if(e.code === 'Space') {
+  if (e.code === 'Space') {
     overlay.style.display = 'none';
 
-    if(msg.includes("start the practice trial")) {
+    if (msg.includes("start the practice trial")) {
       // first time: begin practice
       startTrial();
 
-    } else if(msg.includes("begin the experiment")) {
+    } else if (msg.includes("begin the experiment")) {
       // after practice: reset & start real experiment
       realTrial = true;
       resetScore();
       startRealTrial();
     }
 
-  } else if(e.code === 'Enter' && msg.includes("repeat practice")) {
+  } else if (e.code === 'Enter' && msg.includes("repeat practice")) {
     // after practice: repeat practice without touching realTrial
     overlay.style.display = 'none';
     realTrial = false;
@@ -83,82 +124,88 @@ function resetScore() {
 
 //function to generate the random shape sequence 
 function generateShapeSequence(length) {
-    const result = [];
-    const usedIndices = new Set();
-  
-    while(result.length < length) {
-      const shapeId = Math.floor(Math.random() * 16);
-      const gridIndex = Math.floor(Math.random() * 16);
-      if(!usedIndices.has(gridIndex)) {
-        result.push({ shapeId, gridIndex });
-        usedIndices.add(gridIndex);
-      }
+  const result = [];
+  const usedIndices = new Set();
+
+  while (result.length < length) {
+    const shapeId = Math.floor(Math.random() * 16);
+    const gridIndex = Math.floor(Math.random() * 16);
+    if (!usedIndices.has(gridIndex)) {
+      result.push({ shapeId, gridIndex });
+      usedIndices.add(gridIndex);
     }
-  
-    return result;
   }
-  
-//then display/play it
-function playShapeSequence(sequence, onComplete) {
-    let i = 0;
-    const interval = setInterval(() => {
-      tileElements.forEach(tile => tile.innerHTML = '');  //clear all tiles
-  
-      if(i >= sequence.length) {
-        clearInterval(interval);
-        if(typeof onComplete === 'function') onComplete();
-        return;
-      }
-  
-      const { shapeId, gridIndex } = sequence[i];
-      const tile = tileElements[gridIndex];
-  
-      const img = document.createElement('img');
-      img.src = getShapeImageById(shapeId);
-      img.style.width = '100%';
-      img.style.height = '100%';
-      img.style.objectFit = 'contain';
-  
-      tile.appendChild(img);
-      i++;
-    }, 1000); //show each shape for 1 second
+
+  return result;
 }
+
 let shapesDropped = 0;
 let currentTrialSequence = [];
+
+function playShapeSequenceWithRealDuration(sequence, duration, onComplete) {
+  document.body.classList.add('hide-cursor');
+  let i = 0;
+  const interval = setInterval(() => {
+    tileElements.forEach(tile => tile.innerHTML = '');
+
+    if (i >= sequence.length) {
+      clearInterval(interval);
+      document.body.classList.remove('hide-cursor');
+      if (typeof onComplete === 'function') onComplete();
+      return;
+    }
+
+    const { shapeId, gridIndex } = sequence[i];
+    const tile = tileElements[gridIndex];
+
+    const img = document.createElement('img');
+    img.src = getShapeImageById(shapeId);
+    img.style.width = '100%';
+    img.style.height = '100%';
+    img.style.objectFit = 'contain';
+
+    tile.appendChild(img);
+    i++;
+  }, duration);
+}
 
 //PRACTICE TRIAL
 function startTrial() {
   const practiceLengths = [2, 2];
   let curr = 0;
-  acceptingInput = true;
+  acceptingInput = false;
 
   function runNext() {
-    if(curr >= practiceLengths.length) {
+    if (curr >= practiceLengths.length) {
       const overlay = document.getElementById('overlay-message');
       document.getElementById('message-box').textContent = "Practice complete! Press SPACE to begin the experiment, or press ENTER to repeat practice.";
       overlay.style.display = 'flex';
       realTrial = true;
       return;
     }
-    
+
     const shapeCount = practiceLengths[curr];
-    currentTrialSequence = generateShapeSequence(shapeCount);  
-    playShapeSequence(currentTrialSequence,() => {
+    currentTrialSequence = generateShapeSequence(shapeCount);
+    playShapeSequenceWithRealDuration(currentTrialSequence, pracTrialDuration[curr], () => {
       userDropLocations = [];
       tileElements.forEach(tile => tile.innerHTML = '');
-      fullCreditIndex = 0;
-      acceptingInput = true;
       userInput = [];
       shapesDropped = 0;
-      enableDragAndDrop();
+
+      setTimeout(() => {
+        acceptingInput = true;
+        enableDragAndDrop();
+        trialStartTime = performance.now();
+      }, 60);
+
       //Wait for user to drop all shapes
       const interval = setInterval(() => {
-        if(!acceptingInput) {
+        if (!acceptingInput) {
           clearInterval(interval);
           curr++;
           setTimeout(runNext, 1000); //pause between trials, constant
         }
-      }, 1000); //In real trial, presentation time will not be constant
+      }, 1000);
     });
   }
   runNext();
@@ -166,33 +213,44 @@ function startTrial() {
 
 //REAL TRIAL 
 function startRealTrial() {
-  const trialSetSizes = [
-    ...Array(6).fill(2),
-    ...Array(9).fill(3),
-    ...Array(11).fill(4)
-  ];
+  // const trialSetSizes = [
+  //   ...Array(6).fill(2),
+  //   ...Array(9).fill(3),
+  //   ...Array(11).fill(4)
+  // ];
+  //for testing purposes
+  const trialSetSizes = [2, 3];
 
   let curr = 0;
+  acceptingInput = false;
 
   function runNext() {
-    if(curr >= trialSetSizes.length) {
+    if (curr >= trialSetSizes.length) {
       const overlay = document.getElementById('overlay-message');
       document.getElementById('message-box').textContent = "Experiment complete! Thank you for participating. Please call over the proctor.";
       overlay.style.display = 'flex';
+
+      //trigger CSV download of both logs
+      const id = fileSafeId(participantID);
+      downloadCSV(`${id}_trialsum.csv`, trialSummaryData);
+      downloadCSV(`${id}_dragpath.csv`, dragPathData);
+
       return;
     }
-
     const shapeCount = trialSetSizes[curr];
     currentTrialSequence = generateShapeSequence(shapeCount);
 
-    playShapeSequence(currentTrialSequence, () => {
-      userDropLocations = []; 
+    playShapeSequenceWithRealDuration(currentTrialSequence, realTrialDurations[curr], () => {
+      userDropLocations = [];
       tileElements.forEach(tile => tile.innerHTML = '');
-      fullCreditIndex = 0;
-      acceptingInput = true;
       userInput = [];
       shapesDropped = 0;
-      enableDragAndDrop();
+
+      setTimeout(() => {
+        acceptingInput = true;
+        enableDragAndDrop();
+        trialStartTime = performance.now();
+      }, 60);
 
       const interval = setInterval(() => {
         if (!acceptingInput) {
@@ -290,46 +348,40 @@ function showFeedbackInTiles(scoreData) {
 }
 
 function enableDragAndDrop() {
+  // 1) Sidebar pieces: overwrite dragstart each time so we never stack handlers
   document.querySelectorAll('.sidebars .tile img').forEach(img => {
-    img.addEventListener('dragstart', e => {
+    img.draggable = true;
+    img.ondragstart = e => {
       e.dataTransfer.effectAllowed = 'move';
       e.dataTransfer.setData('text/plain', e.target.src);
-      const w = e.target.width, h = e.target.height;
-      e.dataTransfer.setDragImage(e.target, w / 2, h / 2);
-    });
-  });
-  
-    //make grid cells droppable
-    const gridTiles = document.querySelectorAll('#grid .tile');
-    gridTiles.forEach(tile => {
-      tile.addEventListener('dragover', e => {
-        e.preventDefault();
-        e.dataTransfer.dropEffect = 'move';
-      });
-  
-      tile.addEventListener('drop', e => {
-        tileElements.forEach(tile => {
-  tile.replaceWith(tile.cloneNode(true));  // wipe old listeners
-});
-tileElements.length = 0;
-document.querySelectorAll('#grid .tile').forEach(tile => {
-  tileElements.push(tile); // repopulate list
-
-  tile.addEventListener('dragover', e => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
+      const w = e.target.width || 60, h = e.target.height || 60;
+      try { e.dataTransfer.setDragImage(e.target, w / 2, h / 2); } catch (_) { }
+    };
   });
 
-  tile.addEventListener('drop', e => {
-    e.preventDefault();
-    const src = e.dataTransfer.getData('text/plain');
-    if (src) {
+  // 2) Grid tiles: overwrite handlers so we don't accumulate duplicates
+  document.querySelectorAll('#grid .tile').forEach(tile => {
+    tile.ondragover = e => {
+      e.preventDefault();                  // REQUIRED so drop will fire
+      e.dataTransfer.dropEffect = 'move';
+    };
+
+    tile.ondrop = e => {
+      e.preventDefault();
+      if (!acceptingInput) return;         // ignore if not ready
+
+      const src = e.dataTransfer.getData('text/plain');
+      if (!src) return;
+
+      const tileIndex = Number(tile.dataset.index);
+
+      // Count a new drop only if the grid cell was empty
       if (!tile.firstChild) shapesDropped++;
-      userDropLocations.push({
-        tileIndex: parseInt(tile.dataset.index),
-        imgSrc: src
-      });
 
+      // Record the drop
+      userDropLocations.push({ tileIndex, imgSrc: src });
+
+      // Render the dropped shape
       tile.innerHTML = '';
       const img = document.createElement('img');
       img.src = src;
@@ -338,66 +390,121 @@ document.querySelectorAll('#grid .tile').forEach(tile => {
       img.style.height = '100%';
       img.style.objectFit = 'contain';
       tile.appendChild(img);
-    }
 
-    if (shapesDropped >= currentTrialSequence.length && acceptingInput) {
-      acceptingInput = false;
-      requestAnimationFrame(() => {
-        setTimeout(() => {
-          console.log("Evaluating", userDropLocations.length, "drops");
-          const scoreData = evaluateUserInput(currentTrialSequence);
-          showFeedbackInTiles(scoreData);
-        }, 0);
-      });
-    }
+      // If we've placed all shapes, score the sequence
+      if (shapesDropped >= currentTrialSequence.length) {
+        acceptingInput = false;
+
+        // Let the DOM paint before we score/show feedback
+        requestAnimationFrame(() => {
+          setTimeout(() => {
+            const scoreData = evaluateUserInput(currentTrialSequence);
+            showFeedbackInTiles(scoreData);
+
+            // (Your existing realTrial logging can stay where you already have it)
+            trialEndTime = performance.now();
+            const durationMs = trialEndTime - trialStartTime;
+
+            //1 if dropped in right tile, 0 if not
+            // const executedFlags = currentTrialSequence.map(item =>
+            //   userDropLocations.some(drop => drop.tileIndex === item.gridIndex) ? 1 : 0
+            // );
+
+            const trialLabel = realTrial
+              ? `${realTrialCounter++}`
+              : `P${practiceTrialCounter++}`;
+
+            trialSummaryData.push([
+              participantID,
+              trialLabel,
+              currentTrialSequence.length,
+              Math.round(durationMs),
+              // executedFlags.join(","),
+              scoreData.reduce((sum, s) => sum + s.points, 0)
+            ]);
+
+          }, 0);
+        });
+      }
+    };
   });
-});
+}
 
-      });
-    });
-  }
 
 function handleTileClick(e) {
-    if(!acceptingInput) return;
-    const index = parseInt(e.target.dataset.index);
-    userInput.push(index);
-    if(userInput.length === sequence.length) {
-        acceptingInput = false;
-        storeTrial(sequence, userInput);
-    }
+  if (!acceptingInput) return;
+  const index = parseInt(e.target.dataset.index);
+  userInput.push(index);
+  if (userInput.length === sequence.length) {
+    acceptingInput = false;
+    storeTrial(sequence, userInput);
+  }
 }
 
 function storeTrial(pattern, response) {
-    //to save data (WORK ON MORE)
-    console.log("Trial stored:", {
-        pattern: [...pattern],
-        response: [...response],
-        timestamp: Date.now()
-    });
-} 
+  //to save data (WORK ON MORE)
+  console.log("Trial stored:", {
+    pattern: [...pattern],
+    response: [...response],
+    timestamp: Date.now()
+  });
+}
 
 function getShapeImageById(id) {
-    const shapeURLs = [
-      'shapes/circle-red.png',
-      'shapes/square-red.png',
-      'shapes/triangle-red.png',
-      'shapes/diamond-red.png',
-      'shapes/circle-blue.png',
-      'shapes/square-blue.png',
-      'shapes/triangle-blue.png',
-      'shapes/diamond-blue.png',
-      'shapes/circle-green.png',
-      'shapes/square-green.png',
-      'shapes/triangle-green.png',
-      'shapes/diamond-green.png',
-      'shapes/circle-yellow.png',
-      'shapes/square-yellow.png',
-      'shapes/triangle-yellow.png',
-      'shapes/diamond-yellow.png'
-    ];
-    return shapeURLs[id % shapeURLs.length];
+  const shapeURLs = [
+    'shapes/circle-red.png',
+    'shapes/square-red.png',
+    'shapes/triangle-red.png',
+    'shapes/diamond-red.png',
+    'shapes/circle-blue.png',
+    'shapes/square-blue.png',
+    'shapes/triangle-blue.png',
+    'shapes/diamond-blue.png',
+    'shapes/circle-green.png',
+    'shapes/square-green.png',
+    'shapes/triangle-green.png',
+    'shapes/diamond-green.png',
+    'shapes/circle-yellow.png',
+    'shapes/square-yellow.png',
+    'shapes/triangle-yellow.png',
+    'shapes/diamond-yellow.png'
+  ];
+  return shapeURLs[id % shapeURLs.length];
+}
+
+//csv file 
+
+function fileSafeId(id) {
+  return String(id || 'anon').trim().replace(/\s+/g, '_').replace(/[^\w\-]/g, '');
+}
+
+function downloadCSV(filename, rows) {
+  if (!rows || rows.length === 0) {
+    console.warn(`No data to export for ${filename}`);
+    return;
   }
-  
-  
-  
-  
+
+  const csvContent = rows.map(row =>
+    row.map(field => {
+      const clean = String(field ?? "").replace(/"/g, '""'); // Escape quotes
+      return `"${clean}"`;
+    }).join(",")
+  ).join("\n");
+
+  const blob = new Blob([csvContent], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.style.display = "none";
+  document.body.appendChild(a);
+  a.click();
+
+  // Cleanup
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+
+
