@@ -97,6 +97,20 @@ body {
     margin: 0;
 }
 
+#grid .tile {
+  pointer-events: auto;
+}
+
+* {
+  cursor: auto;
+}
+
+body.hide-cursor,
+body.hide-cursor * {
+  cursor: none !important;
+}
+
+
 .sidebars {
     display: grid;
     gap: 0;
@@ -173,4 +187,5 @@ body {
     line-height: 100px;
     font-weight: bold;
 }
+
 
