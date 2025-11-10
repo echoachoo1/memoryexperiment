@@ -13,11 +13,30 @@ let score = 0;
 let trialSummaryData = [
   ['participantID', 'trialNumber', 'sequenceLength', 'trialDuration(ms)', 'scoreThisTrial']
 ];
-let dragPathData = [["Trial", "DragNumber", "X", "Y", "Timestamp"]];
+let dragPathData = [["participantID", "trialNumber", "DragNumber", "X", "Y", "Timestamp"]];
 let trialStartTime = null;
 let trialEndTime = null;
 let practiceTrialCounter = 0;
 let realTrialCounter = 0;
+let currentDragPath = [];
+let dragNumberThisTrial = 0;
+let isDragging = false;
+document.addEventListener('dragover', e => {
+  if (!isDragging) return;
+  dragPathData.push([
+    participantID,
+    realTrial ? realTrialCounter : `P${practiceTrialCounter}`,
+    dragNumberThisTrial,
+    e.clientX,
+    e.clientY,
+    Date.now()
+  ]);
+});
+
+// safety: if a drag is canceled, make sure we stop logging
+document.addEventListener('dragend', () => {
+  isDragging = false;
+});
 
 //hard coded shape duration
 const realTrialDurations = [
@@ -73,7 +92,7 @@ document.getElementById('enter-btn').addEventListener('click', () => {
   }
   participantID = input;
   document.getElementById('start-screen').style.display = 'none';
-  document.getElementById('all-grids').style.display = 'grid';  // or 'flex' depending on your layout
+  document.getElementById('all-grids').style.display = 'grid';  
 
   document.getElementById('overlay-message').style.display = 'flex';
   //add participant ID to jsPsych 
@@ -191,6 +210,7 @@ function startTrial() {
       tileElements.forEach(tile => tile.innerHTML = '');
       userInput = [];
       shapesDropped = 0;
+      dragNumberThisTrial = 0;
 
       setTimeout(() => {
         acceptingInput = true;
@@ -245,6 +265,7 @@ function startRealTrial() {
       tileElements.forEach(tile => tile.innerHTML = '');
       userInput = [];
       shapesDropped = 0;
+      dragNumberThisTrial = 0;
 
       setTimeout(() => {
         acceptingInput = true;
@@ -274,7 +295,7 @@ function evaluateUserInput(expected) {
   let tileScores = [];
   let hadMistake = false;
 
-  // Map expected gridIndex → { shapeId, order }
+  // Map expected gridIndex -> { shapeId, order }
   const expectedMap = new Map();
   expected.forEach((item, i) => {
     expectedMap.set(item.gridIndex, {
@@ -345,90 +366,83 @@ function showFeedbackInTiles(scoreData) {
   setTimeout(() => {
     tileElements.forEach(tile => tile.innerHTML = '');
   }, 1200);
-}
+} 
 
 function enableDragAndDrop() {
-  // 1) Sidebar pieces: overwrite dragstart each time so we never stack handlers
+  // Sidebar pieces
   document.querySelectorAll('.sidebars .tile img').forEach(img => {
     img.draggable = true;
     img.ondragstart = e => {
+      // increment when a NEW drag begins
+      dragNumberThisTrial++;
+
       e.dataTransfer.effectAllowed = 'move';
       e.dataTransfer.setData('text/plain', e.target.src);
       const w = e.target.width || 60, h = e.target.height || 60;
-      try { e.dataTransfer.setDragImage(e.target, w / 2, h / 2); } catch (_) { }
+      try { e.dataTransfer.setDragImage(e.target, w / 2, h / 2); } catch (_) {}
+
+      // start tracking this drag
+      isDragging = true;
     };
   });
 
-  // 2) Grid tiles: overwrite handlers so we don't accumulate duplicates
+  // Grid tiles
   document.querySelectorAll('#grid .tile').forEach(tile => {
-    tile.ondragover = e => {
-      e.preventDefault();                  // REQUIRED so drop will fire
-      e.dataTransfer.dropEffect = 'move';
-    };
+  tile.ondragover = e => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
 
-    tile.ondrop = e => {
-      e.preventDefault();
-      if (!acceptingInput) return;         // ignore if not ready
+  tile.ondrop = e => {
+    e.preventDefault();
+    if (!acceptingInput) return;
 
-      const src = e.dataTransfer.getData('text/plain');
-      if (!src) return;
+    // stop live path logging for this drag
+    isDragging = false;
 
-      const tileIndex = Number(tile.dataset.index);
+    const src = e.dataTransfer.getData('text/plain');
+    if (!src) return;
 
-      // Count a new drop only if the grid cell was empty
-      if (!tile.firstChild) shapesDropped++;
+    const tileIndex = Number(tile.dataset.index);
+    if (!tile.firstChild) shapesDropped++;
 
-      // Record the drop
-      userDropLocations.push({ tileIndex, imgSrc: src });
+    userDropLocations.push({ tileIndex, imgSrc: src });
 
-      // Render the dropped shape
-      tile.innerHTML = '';
-      const img = document.createElement('img');
-      img.src = src;
-      img.draggable = false;
-      img.style.width = '100%';
-      img.style.height = '100%';
-      img.style.objectFit = 'contain';
-      tile.appendChild(img);
+    tile.innerHTML = '';
+    const img = document.createElement('img');
+    img.src = src;
+    img.draggable = false;
+    img.style.width = '100%';
+    img.style.height = '100%';
+    img.style.objectFit = 'contain';
+    tile.appendChild(img);
 
-      // If we've placed all shapes, score the sequence
-      if (shapesDropped >= currentTrialSequence.length) {
-        acceptingInput = false;
+    if (shapesDropped >= currentTrialSequence.length) {
+      acceptingInput = false;
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          const scoreData = evaluateUserInput(currentTrialSequence);
+          showFeedbackInTiles(scoreData);
 
-        // Let the DOM paint before we score/show feedback
-        requestAnimationFrame(() => {
-          setTimeout(() => {
-            const scoreData = evaluateUserInput(currentTrialSequence);
-            showFeedbackInTiles(scoreData);
+          trialEndTime = performance.now();
+          const durationMs = trialEndTime - trialStartTime;
 
-            // (Your existing realTrial logging can stay where you already have it)
-            trialEndTime = performance.now();
-            const durationMs = trialEndTime - trialStartTime;
+          const trialLabel = realTrial ? `${realTrialCounter++}` : `P${practiceTrialCounter++}`;
+          trialSummaryData.push([
+            participantID,
+            trialLabel,
+            currentTrialSequence.length,
+            Math.round(durationMs),
+            scoreData.reduce((sum, s) => sum + s.points, 0)
+          ]);
+        }, 0);
+      });
+    }
+  };
+});
 
-            //1 if dropped in right tile, 0 if not
-            // const executedFlags = currentTrialSequence.map(item =>
-            //   userDropLocations.some(drop => drop.tileIndex === item.gridIndex) ? 1 : 0
-            // );
-
-            const trialLabel = realTrial
-              ? `${realTrialCounter++}`
-              : `P${practiceTrialCounter++}`;
-
-            trialSummaryData.push([
-              participantID,
-              trialLabel,
-              currentTrialSequence.length,
-              Math.round(durationMs),
-              // executedFlags.join(","),
-              scoreData.reduce((sum, s) => sum + s.points, 0)
-            ]);
-
-          }, 0);
-        });
-      }
-    };
-  });
 }
+
 
 
 function handleTileClick(e) {
