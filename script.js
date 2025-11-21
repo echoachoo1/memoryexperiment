@@ -69,8 +69,8 @@ const realTrialDurations = [
 ];
 
 const pracTrialDuration = [
-  800,
-  700
+  1200,
+  1200
 ];
 
 //making the 4x4 grid
@@ -241,7 +241,8 @@ function startRealTrial() {
   //for testing purposes
 
   //trial set sizes range from 2 to 4, 26 trials
-  const trialSetSizes = [2, 3, 4, 4, 2, 3, 3, 4, 2, 4, 3, 2, 4, 2, 3, 4, 4, 3, 2, 3, 4, 2, 3, 4, 2, 4];
+  // 2, 3, 4, 4, 2, 3, 3, 4, 2, 4, 3, 2, 4, 2, 3, 4, 4, 3, 2, 3, 4, 2, 3, 4, 2, 4
+  const trialSetSizes = [2, 3, 4];
   
   let curr = 0;
   acceptingInput = false;
@@ -295,7 +296,7 @@ function evaluateUserInput(expected) {
   const fullCreditSequence = [15, 30, 60, 120];
   let totalCurrTrial = 0;
   let tileScores = [];
-  let hadMistake = false;
+  let hadMistake = true;
 
   // Map expected gridIndex -> { shapeId, order }
   const expectedMap = new Map();
@@ -331,6 +332,7 @@ function evaluateUserInput(expected) {
       } else {
         if (hadMistake) {
           points = 15;
+          hadMistake = false
         } else {
           points = fullCreditSequence[expected.order] ?? 15;
         }
