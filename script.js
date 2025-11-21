@@ -239,8 +239,10 @@ function startRealTrial() {
   //   ...Array(11).fill(4)
   // ];
   //for testing purposes
-  const trialSetSizes = [2, 3];
 
+  //trial set sizes range from 2 to 4, 26 trials
+  const trialSetSizes = [2, 3, 4, 4, 2, 3, 3, 4, 2, 4, 3, 2, 4, 2, 3, 4, 4, 3, 2, 3, 4, 2, 3, 4, 2, 4];
+  
   let curr = 0;
   acceptingInput = false;
 
