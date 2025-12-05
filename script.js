@@ -468,28 +468,6 @@ function storeTrial(pattern, response) {
   });
 }
 
-function getShapeImageById(id) {
-  const shapeURLs = [
-    'shapes/circle-red.png',
-    'shapes/square-red.png',
-    'shapes/triangle-red.png',
-    'shapes/diamond-red.png',
-    'shapes/circle-blue.png',
-    'shapes/square-blue.png',
-    'shapes/triangle-blue.png',
-    'shapes/diamond-blue.png',
-    'shapes/circle-green.png',
-    'shapes/square-green.png',
-    'shapes/triangle-green.png',
-    'shapes/diamond-green.png',
-    'shapes/circle-yellow.png',
-    'shapes/square-yellow.png',
-    'shapes/triangle-yellow.png',
-    'shapes/diamond-yellow.png'
-  ];
-  return shapeURLs[id % shapeURLs.length];
-}
-
 //csv file 
 
 function fileSafeId(id) {
@@ -524,5 +502,79 @@ function downloadCSV(filename, rows) {
   URL.revokeObjectURL(url);
 }
 
+// FILE UPLOAD
+// upload folder
+const inputFolder = document.getElementById('custom-images');
+const orderFile = document.getElementById('textFile');
+const img_files = [];
+
+orderFile.addEventListener('change', function () {
+  const files = inputFolder.files;
+  const order = orderFile.files[0]
+ for(let i = 0; i < files.length; i++){
+    console.log(files[i].name);
+ }
+
+  // put files in right order
+  let reader = new FileReader();
+  reader.onload = function(progressEvent) {
+    const text = this.result;
+    orderFile.innerText = text;
+
+    let lines = text.split('\n');
+    for(let line = 0; line < lines.length; line++){
+      for(let i = 0; i < files.length; i++){
+        if (lines[line] === files[i].name){
+          img_files.push(files[i]);
+        }
+      }
+      console.log(lines[line])
+    }
+      // display file names 
+    for(let i = 0; i<img_files.length; i++){
+      let fileName = img_files[i] ? img_files[i].name : 'No file chosen';
+      const para = document.createElement("p");
+      para.innerHTML = 'Selected file ' + (i+1) + ': '  + fileName;
+      document.getElementById("settings-panel").appendChild(para);
+    }
+
+    if(img_files.length > 0){
+      for(let i = 0; i < img_files.length; i++){
+        let shape_num = i + 1;
+        let shape_id = "shape" + shape_num;
+        console.log(shape_id)
+        const img_replace = document.getElementById(shape_id);
+        img_replace.src = URL.createObjectURL(img_files[i]);
+      }
+    }
+  };
+  reader.readAsText(order);
+});
 
 
+
+//CHANGE TO REFLECT FILE UPLOAD
+function getShapeImageById(id) {
+  const shapeURLs = [
+    'shapes/circle-red.png',
+    'shapes/square-red.png',
+    'shapes/triangle-red.png',
+    'shapes/diamond-red.png',
+    'shapes/circle-blue.png',
+    'shapes/square-blue.png',
+    'shapes/triangle-blue.png',
+    'shapes/diamond-blue.png',
+    'shapes/circle-green.png',
+    'shapes/square-green.png',
+    'shapes/triangle-green.png',
+    'shapes/diamond-green.png',
+    'shapes/circle-yellow.png',
+    'shapes/square-yellow.png',
+    'shapes/triangle-yellow.png',
+    'shapes/diamond-yellow.png'
+  ];
+  if (img_files.length > 0){
+    return URL.createObjectURL(img_files[id % img_files.length]);
+  }
+  return shapeURLs[id % shapeURLs.length];
+}
