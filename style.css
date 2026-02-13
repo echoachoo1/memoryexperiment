@@ -90,8 +90,8 @@ body {
   
 #grid {
     display: grid;
-    grid-template-columns: repeat(4, 120px);
-    grid-template-rows: repeat(4, 120px);
+    grid-template-columns: repeat(4, 115px);
+    grid-template-rows: repeat(4, 115px);
     gap: 0;
     padding: 0;
     margin: 0;
@@ -117,17 +117,17 @@ body.hide-cursor * {
 }
 
 .topbottom-bars {
-    grid-template-columns: repeat(4,120px);
+    grid-template-columns: repeat(4,115px);
     justify-content: center;
 }
 
 .leftright-bars {
-    grid-template-rows: repeat(4,120px);
+    grid-template-rows: repeat(4,115px);
 }
   
 .tile {
-    width: 120px;
-    height: 120px;
+    width: 115px;
+    height: 115px;
     background-color: dimgray;
     border: 2px solid black;
     box-sizing: border-box;
@@ -155,8 +155,8 @@ body.hide-cursor * {
     display: flex;
     justify-content: center;
     align-items: center;
-    width: 120px;
-    height: 120px;
+    width: 115px;
+    height: 115px;
     background-color: dimgray;
     border: 2px solid black;
     transition: background-color 0.3s;
@@ -184,7 +184,7 @@ body.hide-cursor * {
     font-size: 1.2em;
     color: black;
     text-align: center;
-    line-height: 100px;
+    line-height: 80px;
     font-weight: bold;
 }
 
