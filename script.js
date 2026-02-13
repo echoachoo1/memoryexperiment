@@ -160,6 +160,7 @@ function generateShapeSequence(length) {
 
 let shapesDropped = 0;
 let currentTrialSequence = [];
+let currentTrialScoreData = [];
 
 function playShapeSequenceWithRealDuration(sequence, duration, onComplete) {
   document.body.classList.add('hide-cursor');
@@ -207,6 +208,7 @@ function startTrial() {
     currentTrialSequence = generateShapeSequence(shapeCount);
     playShapeSequenceWithRealDuration(currentTrialSequence, pracTrialDuration[curr], () => {
       userDropLocations = [];
+      currentTrialScoreData = [];
       tileElements.forEach(tile => tile.innerHTML = '');
       userInput = [];
       shapesDropped = 0;
@@ -265,6 +267,7 @@ function startRealTrial() {
 
     playShapeSequenceWithRealDuration(currentTrialSequence, realTrialDurations[curr], () => {
       userDropLocations = [];
+      currentTrialScoreData = []; 
       tileElements.forEach(tile => tile.innerHTML = '');
       userInput = [];
       shapesDropped = 0;
@@ -289,14 +292,14 @@ function startRealTrial() {
   runNext();
 }
 
-//POINT calculation
-function evaluateUserInput(expected) {
-  console.log("Evaluating", userDropLocations.length, "drops");
+//POINT calculation - now evaluates after single drop
+function evaluateUserInput(tileIndex, imgSrc, expected) {
+  console.log("Evaluating drop at tile", tileIndex);
 
   const fullCreditSequence = [15, 30, 60, 120];
-  let totalCurrTrial = 0;
-  let tileScores = [];
-  let hadMistake = true;
+  // let totalCurrTrial = 0;
+  // let tileScores = [];
+  // let hadMistake = true;
 
   // Map expected gridIndex -> { shapeId, order }
   const expectedMap = new Map();
@@ -308,42 +311,58 @@ function evaluateUserInput(expected) {
   });
 
   // Score based on user drop locations
-  userDropLocations.forEach((drop) => {
-    const tileIndex = drop.tileIndex;
-    const expected = expectedMap.get(tileIndex);
-    let points = 0;
+  // userDropLocations.forEach((drop) => {
+  //   const tileIndex = drop.tileIndex;
+  //   const expected = expectedMap.get(tileIndex);
+  //   let points = 0;
 
-    if (!expected) {
-      points = 0;
-      hadMistake = true;
+  const isFirstDropOfTrial = currentTrialScoreData.length === 0;
+
+  // see if there were mistakes in prev drop
+  const lastDrop = currentTrialScoreData[currentTrialScoreData.length - 1];
+  const previousWasPerfect = lastDrop && lastDrop.points >= 15;
+
+  const expectedItem = expectedMap.get(tileIndex);
+  let points = 0;
+
+
+  if (!expectedItem) {
+    points = 0;
+    //hadMistake = true;
+  } else {
+    const [dDropped, cDropped] = imgSrc.split('/').pop().replace('.png', '').split('-');
+    const [dExpected, cExpected] = getShapeImageById(expectedItem.shapeId).split('/').pop().replace('.png', '').split('-');
+
+    const shapeCorrect = dDropped === dExpected;
+    const colorCorrect = cDropped === cExpected;
+
+    if (!shapeCorrect && !colorCorrect) {
+      points = 5;
+      //hadMistake = true;
+    } else if (shapeCorrect ^ colorCorrect) {
+      points = 10;
+      //hadMistake = true;
     } else {
-      const [dDropped, cDropped] = drop.imgSrc.split('/').pop().replace('.png', '').split('-');
-      const [dExpected, cExpected] = getShapeImageById(expected.shapeId).split('/').pop().replace('.png', '').split('-');
-
-      const shapeCorrect = dDropped === dExpected;
-      const colorCorrect = cDropped === cExpected;
-
-      if (!shapeCorrect && !colorCorrect) {
-        points = 5;
-        hadMistake = true;
-      } else if (shapeCorrect ^ colorCorrect) {
-        points = 10;
-        hadMistake = true;
+      if (!previousWasPerfect || isFirstDropOfTrial) {
+        points = 15;
       } else {
-        if (hadMistake) {
-          points = 15;
-          hadMistake = false
-        } else {
-          points = fullCreditSequence[expected.order] ?? 15;
+        let lastPerfectScore = 15;
+        for(let i = currentTrialScoreData.length -1; i>=0; i--){
+          if (currentTrialScoreData[i].points >= 15) {
+            lastPerfectScore = currentTrialScoreData[i].points;
+            break;
+          }
         }
+        points = Math.min(lastPerfectScore * 2, 120);
+        //hadMistake = false
       }
     }
+  }
 
-    //totalCurrTrial += points;
-    tileScores.push({ index: tileIndex, points });
-  });
+  //totalCurrTrial += points;
+  //tileScores.push({ index: tileIndex, points });
 
-  return tileScores;
+  return {index: tileIndex, points}
 }
 
 function showFeedbackInTiles(scoreData) {
@@ -421,12 +440,44 @@ function enableDragAndDrop() {
     img.style.objectFit = 'contain';
     tile.appendChild(img);
 
+    // evaluate drop immediately
+    const dropScore = evaluateUserInput(tileIndex, src, currentTrialSequence);
+    currentTrialScoreData.push(dropScore);
+
+    score += dropScore.points;
+    const scoreDisplay = document.getElementById('score-display');
+    scoreDisplay.textContent = `Score: ${score}`;
+
+    const immediateFeedback = document.createElement('div');
+    immediateFeedback.style.position = 'absolute';
+    immediateFeedback.style.top = '50%';
+    immediateFeedback.style.left = '50%';
+    immediateFeedback.style.transform = 'translate(-50%, -50%)';
+    immediateFeedback.style.color = 'white';
+    immediateFeedback.style.fontSize = '20px';
+    immediateFeedback.style.fontWeight = 'bold';
+    immediateFeedback.style.textShadow = '2px 2px 4px rgba(0,0,0,0.8)';
+    immediateFeedback.style.pointerEvents = 'none';
+    immediateFeedback.style.zIndex = '1000';
+    immediateFeedback.textContent = `+${dropScore.points}`;
+    tile.style.position = 'relative';
+    tile.appendChild(immediateFeedback);
+
+    setTimeout(() => {
+      if(immediateFeedback.parentNode == tile){
+        tile.removeChild(immediateFeedback)
+      }
+    }, 800);
+
+    const label = realTrial ? "Real trial" : "Practice";
+    console.log(`${label} – tile ${tileIndex}: ${dropScore.points} pts (total now: ${score})`);
+
     if (shapesDropped >= currentTrialSequence.length) {
       acceptingInput = false;
       requestAnimationFrame(() => {
         setTimeout(() => {
-          const scoreData = evaluateUserInput(currentTrialSequence);
-          showFeedbackInTiles(scoreData);
+          //const scoreData = evaluateUserInput(currentTrialSequence);
+          showFeedbackInTiles(currentTrialScoreData);
 
           trialEndTime = performance.now();
           const durationMs = trialEndTime - trialStartTime;
@@ -437,12 +488,12 @@ function enableDragAndDrop() {
             trialLabel,
             currentTrialSequence.length,
             Math.round(durationMs),
-            scoreData.reduce((sum, s) => sum + s.points, 0)
+            currentTrialScoreData.reduce((sum, s) => sum + s.points, 0)
           ]);
         }, 0);
       });
     }
-  };
+  }
 });
 
 }
@@ -551,9 +602,6 @@ orderFile.addEventListener('change', function () {
   reader.readAsText(order);
 });
 
-
-
-//CHANGE TO REFLECT FILE UPLOAD
 function getShapeImageById(id) {
   const shapeURLs = [
     'shapes/circle-red.png',
