@@ -55,7 +55,36 @@ const realTrialDurations = [
   800,
   700,
   600,
-  1000,
+  1000, // trial 15
+  900,
+  800,
+  800,
+  700,
+  600,
+  800,
+  700,
+  600,
+  800,
+  700 //trial 25
+];
+
+const timeBetweenShapes = [
+  1000, //trial 0
+  900, //trial 1 
+  800, //trial 2
+  700, //trial 3
+  600, //trial 4
+  500, //trial 5
+  1000, //trial 6
+  900, //trial 7
+  800, //trial 8
+  800,
+  700,
+  600,
+  800,
+  700,
+  600,
+  1000, // trial 15
   900,
   800,
   800,
@@ -165,29 +194,65 @@ let currentTrialScoreData = [];
 function playShapeSequenceWithRealDuration(sequence, duration, onComplete) {
   document.body.classList.add('hide-cursor');
   let i = 0;
-  const interval = setInterval(() => {
+  const ISI = 1000; // blank gap between shapes in ms — adjust as needed
+
+  function showNext() {
+    // Clear the grid (blank screen during ISI)
     tileElements.forEach(tile => tile.innerHTML = '');
 
     if (i >= sequence.length) {
-      clearInterval(interval);
       document.body.classList.remove('hide-cursor');
       if (typeof onComplete === 'function') onComplete();
       return;
     }
 
-    const { shapeId, gridIndex } = sequence[i];
-    const tile = tileElements[gridIndex];
+    // Show shape after ISI gap
+    setTimeout(() => {
+      const { shapeId, gridIndex } = sequence[i];
+      const tile = tileElements[gridIndex];
 
-    const img = document.createElement('img');
-    img.src = getShapeImageById(shapeId);
-    img.style.width = '100%';
-    img.style.height = '100%';
-    img.style.objectFit = 'contain';
+      const img = document.createElement('img');
+      img.src = getShapeImageById(shapeId);
+      img.style.width = '100%';
+      img.style.height = '100%';
+      img.style.objectFit = 'contain';
+      tile.appendChild(img);
 
-    tile.appendChild(img);
-    i++;
-  }, duration);
+      i++;
+
+      // Wait for shape duration, then move to next (which clears first)
+      setTimeout(showNext, duration);
+    }, ISI);
+  }
+
+  showNext();
 }
+// function playShapeSequenceWithRealDuration(sequence, duration, onComplete) {
+//   document.body.classList.add('hide-cursor');
+//   let i = 0;
+//   const interval = setInterval(() => {
+//     tileElements.forEach(tile => tile.innerHTML = '');
+
+//     if (i >= sequence.length) {
+//       clearInterval(interval);
+//       document.body.classList.remove('hide-cursor');
+//       if (typeof onComplete === 'function') onComplete();
+//       return;
+//     }
+
+//     const { shapeId, gridIndex } = sequence[i];
+//     const tile = tileElements[gridIndex];
+
+//     const img = document.createElement('img');
+//     img.src = getShapeImageById(shapeId);
+//     img.style.width = '100%';
+//     img.style.height = '100%';
+//     img.style.objectFit = 'contain';
+
+//     tile.appendChild(img);
+//     i++;
+//   }, duration);
+// }
 
 //PRACTICE TRIAL
 function startTrial() {
@@ -243,8 +308,10 @@ function startRealTrial() {
   //for testing purposes
 
   //trial set sizes range from 2 to 4, 26 trials
-  // 2, 3, 4, 4, 2, 3, 3, 4, 2, 4, 3, 2, 4, 2, 3, 4, 4, 3, 2, 3, 4, 2, 3, 4, 2, 4
-  const trialSetSizes = [2, 3, 4, 4, 2, 3, 3, 4, 2, 4, 3, 2, 4, 2, 3, 4, 4, 3, 2, 3, 4, 2, 3, 4, 2, 4];
+  // trials 0-6: 2 shapes in seq
+  // trials 7-15: 3 shapes in seq
+  // trials 16+: 4 shapes in seq
+  const trialSetSizes = [2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4];
   
   let curr = 0;
   acceptingInput = false;
@@ -464,9 +531,7 @@ function enableDragAndDrop() {
     tile.appendChild(immediateFeedback);
 
     setTimeout(() => {
-      if(immediateFeedback.parentNode == tile){
-        tile.removeChild(immediateFeedback)
-      }
+      tile.innerHTML = '';
     }, 800);
 
     const label = realTrial ? "Real trial" : "Practice";
@@ -490,7 +555,7 @@ function enableDragAndDrop() {
             Math.round(durationMs),
             currentTrialScoreData.reduce((sum, s) => sum + s.points, 0)
           ]);
-        }, 0);
+        }, 800);
       });
     }
   }
